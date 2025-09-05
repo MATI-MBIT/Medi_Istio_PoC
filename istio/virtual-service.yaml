@@ -1,0 +1,36 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: go-service-vs
+  namespace: go-service-obs
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - go-service-gateway
+  http:
+  - match:
+    - uri:
+        exact: /v1/ping
+    route:
+    - destination:
+        host: go-microservice.go-service-obs.svc.cluster.local
+        port:
+          number: 8080
+    timeout: 10s
+    retries:
+      attempts: 3
+      perTryTimeout: 3s
+  - match:
+    - uri:
+        exact: /v1/purchase
+    route:
+    - destination:
+        host: go-microservice.go-service-obs.svc.cluster.local
+        port:
+          number: 8080
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: 5xx,reset,connect-failure,refused-stream

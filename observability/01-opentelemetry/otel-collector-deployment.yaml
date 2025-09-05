@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: go-service-obs
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+        version: v1
+        service: otel-collector
+    spec:
+      serviceAccountName: go-service-sa
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:0.89.0
+        args:
+        - --config=/etc/otel-collector-config/config.yaml
+        ports:
+        - containerPort: 4317   # OTLP gRPC
+          name: otlp-grpc
+        - containerPort: 4318   # OTLP HTTP
+          name: otlp-http
+        - containerPort: 8889   # Prometheus metrics
+          name: prometheus
+        - containerPort: 13133  # Health check
+          name: health-check
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel-collector-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: otel-collector-config
