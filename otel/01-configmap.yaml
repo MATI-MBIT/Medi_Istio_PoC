@@ -9,7 +9,7 @@ data:
         endpoint: 0.0.0.0:13133
       zpages:
         endpoint: 0.0.0.0:55679
-    
+
     receivers:
       # OTLP receiver for applications and Istio
       otlp:
@@ -19,15 +19,7 @@ data:
           http:
             endpoint: 0.0.0.0:4318
       
-      # Jaeger receiver for compatibility
-      jaeger:
-        protocols:
-          grpc:
-            endpoint: 0.0.0.0:14250
-          thrift_http:
-            endpoint: 0.0.0.0:14268
-          thrift_compact:
-            endpoint: 0.0.0.0:6831
+
       
       # Zipkin receiver for Istio traces
       zipkin:
@@ -123,7 +115,7 @@ data:
     service:
       pipelines:
         traces:
-          receivers: [otlp, jaeger, zipkin]
+          receivers: [otlp, zipkin]
           processors: [memory_limiter, resource, batch]
           exporters: [zipkin, logging]
 

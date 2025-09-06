@@ -39,12 +39,7 @@ spec:
           name: health
         - containerPort: 55679  # zPages
           name: zpages
-        - containerPort: 14250  # Jaeger gRPC
-          name: jaeger-grpc
-        - containerPort: 14268  # Jaeger HTTP
-          name: jaeger-http
-        - containerPort: 6831   # Jaeger compact
-          name: jaeger-compact
+
         - containerPort: 9411   # Zipkin
           name: zipkin
         volumeMounts:

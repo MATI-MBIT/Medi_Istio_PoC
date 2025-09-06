@@ -66,18 +66,7 @@ spec:
     port: 55679
     targetPort: 55679
     protocol: TCP
-  - name: jaeger-grpc
-    port: 14250
-    targetPort: 14250
-    protocol: TCP
-  - name: jaeger-http
-    port: 14268
-    targetPort: 14268
-    protocol: TCP
-  - name: jaeger-compact
-    port: 6831
-    targetPort: 6831
-    protocol: UDP
+
   - name: zipkin
     port: 9411
     targetPort: 9411
