@@ -11,13 +11,27 @@ data:
         endpoint: 0.0.0.0:55679
     
     receivers:
-      # OTLP receiver for applications
+      # OTLP receiver for applications and Istio
       otlp:
         protocols:
           grpc:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
+      
+      # Jaeger receiver for compatibility
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:14250
+          thrift_http:
+            endpoint: 0.0.0.0:14268
+          thrift_compact:
+            endpoint: 0.0.0.0:6831
+      
+      # Zipkin receiver for Istio traces
+      zipkin:
+        endpoint: 0.0.0.0:9411
       
       # Prometheus receiver to scrape Istio and K8s metrics
       prometheus:
@@ -53,6 +67,17 @@ data:
                 target_label: __address__
               - action: labelmap
                 regex: __meta_kubernetes_pod_label_(.+)
+            
+            # OpenTelemetry Collector self-monitoring
+            - job_name: 'otel-collector'
+              static_configs:
+              - targets: ['localhost:8888']
+      
+      # Kubernetes cluster receiver for infrastructure metrics
+      k8s_cluster:
+        auth_type: serviceAccount
+        node_conditions_to_report: [Ready, MemoryPressure, DiskPressure, PIDPressure]
+        allocatable_types_to_report: [cpu, memory, storage]
 
     processors:
       batch:
@@ -98,12 +123,12 @@ data:
     service:
       pipelines:
         traces:
-          receivers: [otlp]
+          receivers: [otlp, jaeger, zipkin]
           processors: [memory_limiter, resource, batch]
           exporters: [zipkin, logging]
 
         metrics:
-          receivers: [otlp, prometheus]
+          receivers: [otlp, prometheus, k8s_cluster]
           processors: [memory_limiter, resource, batch]
           exporters: [prometheus, logging]
 
@@ -116,3 +141,5 @@ data:
       telemetry:
         logs:
           level: "info"
+        metrics:
+          level: "detailed"

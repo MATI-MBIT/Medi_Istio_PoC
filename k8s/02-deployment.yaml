@@ -18,6 +18,15 @@ spec:
         version: v1
       annotations:
         sidecar.istio.io/rewriteAppHTTPProbers: "false"
+        # Configuración de telemetría para Envoy
+        proxy.istio.io/config: |
+          proxyStatsMatcher:
+            inclusionRegexps:
+            - ".*outlier_detection.*"
+            - ".*circuit_breakers.*"
+            - ".*upstream_rq_retry.*"
+            - ".*upstream_rq_pending.*"
+            - ".*_cx_.*"
     spec:
       containers:
       - name: go-microservice
@@ -26,16 +35,17 @@ spec:
         - containerPort: 8080
           name: http
         env:
+        # Variables para autoinstrumentación (aunque la app no las use directamente)
         - name: OTEL_SERVICE_NAME
           value: "go-microservice"
         - name: OTEL_SERVICE_VERSION
           value: "v1"
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: "http://otel-collector.medi.svc.cluster.local:4317"
+          value: "http://otel-collector.medi.svc.cluster.local:4318"
         - name: OTEL_EXPORTER_OTLP_PROTOCOL
-          value: "grpc"
+          value: "http/protobuf"
         - name: OTEL_RESOURCE_ATTRIBUTES
-          value: "service.name=go-microservice,service.version=v1,service.namespace=medi"
+          value: "service.name=go-microservice,service.version=v1,service.namespace=medi,deployment.environment=poc"
         - name: OTEL_TRACES_EXPORTER
           value: "otlp"
         - name: OTEL_METRICS_EXPORTER
@@ -43,7 +53,14 @@ spec:
         - name: OTEL_LOGS_EXPORTER
           value: "otlp"
         - name: OTEL_PROPAGATORS
-          value: "tracecontext,baggage"
+          value: "tracecontext,baggage,b3"
+        # Variables adicionales para mejor observabilidad
+        - name: OTEL_TRACES_SAMPLER
+          value: "always_on"
+        - name: OTEL_METRICS_PERIOD
+          value: "5000"
+        - name: OTEL_LOG_LEVEL
+          value: "info"
         resources:
           requests:
             memory: "64Mi"

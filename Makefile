@@ -12,9 +12,15 @@ install-istio: ## Install Istio with demo profile
 	@echo "Installing Istio $(ISTIO_VERSION)..."
 	istioctl install --set values.defaultRevision=default \
 		--set meshConfig.defaultConfig.tracing.zipkin.address=zipkin.medi.svc.cluster.local:9411 \
-		--set values.pilot.traceSampling=100.0 -y
+		--set meshConfig.defaultConfig.tracing.sampling=100.0 \
+		--set values.pilot.traceSampling=100.0 \
+		--set meshConfig.extensionProviders[0].name=otel-collector \
+		--set meshConfig.extensionProviders[0].envoyOtelAls.service=otel-collector.medi.svc.cluster.local \
+		--set meshConfig.extensionProviders[0].envoyOtelAls.port=4317 \
+		--set meshConfig.extensionProviders[1].name=zipkin \
+		--set meshConfig.extensionProviders[1].zipkin.service=zipkin.medi.svc.cluster.local \
+		--set meshConfig.extensionProviders[1].zipkin.port=9411 -y
 	kubectl label namespace default istio-injection=enabled --overwrite
-	kubectl apply -f samples/addons
 
 create-namespace: ## Create and label namespace
 	@echo "Creating namespace $(NAMESPACE)..."
@@ -42,9 +48,17 @@ deploy-istio: create-namespace ## Deploy Istio configurations
 	@echo "Deploying Istio configurations..."
 	kubectl apply -f istio/ -n $(NAMESPACE)
 
-deploy-all: install-istio deploy-monitoring deploy-otel deploy-app deploy-istio ## Deploy everything
+pre-check: ## Check prerequisites before deployment
+	@echo "Running pre-deployment checks..."
+	./scripts/pre-deploy-check.sh
+
+deploy-all: pre-check install-istio deploy-monitoring deploy-otel deploy-app deploy-istio configure-telemetry ## Deploy everything
 	@echo "✅ All components deployed successfully!"
 	@echo "Run 'make port-forward' to access UIs"
+
+configure-telemetry: ## Configure Istio telemetry after deployment
+	@echo "Configuring Istio telemetry..."
+	./scripts/configure-istio-telemetry.sh $(NAMESPACE)
 
 status: ## Check deployment status
 	@echo "=== Namespace $(NAMESPACE) Status ==="
@@ -81,6 +95,10 @@ test: ## Run basic tests
 	curl -s -X POST http://localhost:8080/v1/purchase \
 		-H "Content-Type: application/json" \
 		-d '{"item":"test-item","amount":99.99}' || echo "❌ Purchase failed"
+
+test-telemetry: ## Test telemetry functionality
+	@echo "Running telemetry tests..."
+	./scripts/test-telemetry.sh $(NAMESPACE)
 
 cleanup: ## Clean up all resources
 	@echo "Cleaning up..."
