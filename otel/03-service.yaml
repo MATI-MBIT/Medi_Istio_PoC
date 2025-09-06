@@ -67,7 +67,7 @@ spec:
     targetPort: 55679
     protocol: TCP
 
-  - name: zipkin
+  - name: http-zipkin
     port: 9411
     targetPort: 9411
     protocol: TCP

@@ -41,7 +41,7 @@ spec:
           name: zpages
 
         - containerPort: 9411   # Zipkin
-          name: zipkin
+          name: http-zipkin
         volumeMounts:
         - name: otel-collector-config-vol
           mountPath: /etc/otel-collector-config
