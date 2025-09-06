@@ -1,0 +1,7 @@
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: default
+spec:
+  tracing:
+  - randomSamplingPercentage: 100.0

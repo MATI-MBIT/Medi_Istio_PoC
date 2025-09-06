@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: go-microservice
-  namespace: go-service-obs
   labels:
     app: go-microservice
     version: v1
@@ -17,50 +16,50 @@ spec:
       labels:
         app: go-microservice
         version: v1
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "false"
     spec:
-      serviceAccountName: go-service-sa
       containers:
-        - name: go-microservice
-          # image: go-microservice:otel-local
-          image: docker.io/aira18/go-microservice:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
-              name: http
-          env:
-            # OpenTelemetry configuration
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "otel-collector.go-service-obs.svc.cluster.local:4317"
-            - name: OTEL_SERVICE_NAME
-              value: "go-microservice"
-            - name: OTEL_SERVICE_VERSION
-              value: "v1.0.0"
-          livenessProbe:
-            httpGet:
-              path: /v1/ping
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /v1/ping
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 3
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "200m"
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            runAsUser: 1000
+      - name: go-microservice
+        image: docker.io/aira18/go-microservice:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: "go-microservice"
+        - name: OTEL_SERVICE_VERSION
+          value: "v1"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector.medi.svc.cluster.local:4317"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "grpc"
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: "service.name=go-microservice,service.version=v1,service.namespace=medi"
+        - name: OTEL_TRACES_EXPORTER
+          value: "otlp"
+        - name: OTEL_METRICS_EXPORTER
+          value: "otlp"
+        - name: OTEL_LOGS_EXPORTER
+          value: "otlp"
+        - name: OTEL_PROPAGATORS
+          value: "tracecontext,baggage"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /v1/ping
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /v1/ping
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
