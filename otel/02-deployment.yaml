@@ -19,6 +19,7 @@ spec:
       annotations:
         sidecar.istio.io/rewriteAppHTTPProbers: "false"
     spec:
+      serviceAccountName: otel-collector
       containers:
       - name: otel-collector
         image: otel/opentelemetry-collector-contrib:0.91.0
@@ -34,6 +35,10 @@ spec:
           name: prometheus
         - containerPort: 8888   # Collector metrics
           name: metrics
+        - containerPort: 13133  # Health check
+          name: health
+        - containerPort: 55679  # zPages
+          name: zpages
         volumeMounts:
         - name: otel-collector-config-vol
           mountPath: /etc/otel-collector-config

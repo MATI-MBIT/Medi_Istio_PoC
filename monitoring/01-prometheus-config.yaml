@@ -7,25 +7,28 @@ data:
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
+      external_labels:
+        cluster: 'minikube'
+        environment: 'poc'
 
     scrape_configs:
-      # OpenTelemetry Collector metrics
-      - job_name: 'otel-collector'
+      # OpenTelemetry Collector - Central metrics hub
+      - job_name: 'otel-collector-metrics'
         static_configs:
         - targets: ['otel-collector:8889']
         scrape_interval: 15s
         metrics_path: /metrics
         
-      # Collector self-metrics
-      - job_name: 'otel-collector-self'
+      # OpenTelemetry Collector self-monitoring
+      - job_name: 'otel-collector-health'
         static_configs:
-        - targets: ['otel-collector:8888']
-        scrape_interval: 15s
+        - targets: ['otel-collector:13133']
+        scrape_interval: 30s
         metrics_path: /metrics
         
       # Prometheus self-monitoring
       - job_name: 'prometheus'
         static_configs:
         - targets: ['localhost:9090']
-        scrape_interval: 15s
+        scrape_interval: 30s
         metrics_path: /metrics

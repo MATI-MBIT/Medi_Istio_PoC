@@ -4,19 +4,55 @@ metadata:
   name: otel-collector-config
 data:
   config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      zpages:
+        endpoint: 0.0.0.0:55679
+    
     receivers:
+      # OTLP receiver for applications
       otlp:
         protocols:
           grpc:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4318
+      
+      # Prometheus receiver to scrape Istio and K8s metrics
       prometheus:
         config:
           scrape_configs:
-            - job_name: 'otel-collector'
-              static_configs:
-              - targets: ['localhost:8888']
+            # Istio control plane
+            - job_name: 'istiod'
+              kubernetes_sd_configs:
+              - role: endpoints
+                namespaces:
+                  names:
+                  - istio-system
+              relabel_configs:
+              - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+                action: keep
+                regex: istiod;http-monitoring
+            
+            # Istio proxies (Envoy sidecars)
+            - job_name: 'envoy-stats'
+              kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names:
+                  - medi
+              relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_container_name]
+                action: keep
+                regex: istio-proxy
+              - source_labels: [__address__]
+                action: replace
+                regex: ([^:]+):.*
+                replacement: $1:15090
+                target_label: __address__
+              - action: labelmap
+                regex: __meta_kubernetes_pod_label_(.+)
 
     processors:
       batch:
@@ -25,18 +61,29 @@ data:
       memory_limiter:
         limit_mib: 512
         check_interval: 1s
+      resource:
+        attributes:
+        - key: cluster
+          value: "minikube"
+          action: insert
+        - key: environment
+          value: "poc"
+          action: insert
 
     exporters:
-      # Prometheus for metrics
+      # Prometheus for metrics (central metrics endpoint)
       prometheus:
         endpoint: "0.0.0.0:8889"
         namespace: "otel"
         const_labels:
+          cluster: "minikube"
           environment: "poc"
+        enable_open_metrics: true
       
       # Zipkin for traces
       zipkin:
         endpoint: http://zipkin:9411/api/v2/spans
+        format: json
       
       # Loki for logs
       loki:
@@ -44,28 +91,28 @@ data:
         headers:
           "X-Scope-OrgID": "tenant1"
         
-      # Debug exporter
+      # Logging for debugging
       logging:
-        loglevel: info
+        verbosity: normal
 
     service:
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, resource, batch]
           exporters: [zipkin, logging]
-        
+
         metrics:
           receivers: [otlp, prometheus]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, resource, batch]
           exporters: [prometheus, logging]
-        
+
         logs:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, resource, batch]
           exporters: [loki, logging]
 
-      extensions: []
+      extensions: [health_check, zpages]
       telemetry:
         logs:
           level: "info"
