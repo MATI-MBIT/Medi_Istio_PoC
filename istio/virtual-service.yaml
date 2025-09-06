@@ -7,14 +7,14 @@ spec:
   hosts:
   - "*"
   gateways:
-  - go-service-gateway
+  - istio-system/go-service-gateway
   http:
   - match:
     - uri:
         exact: /v1/ping
     route:
     - destination:
-        host: go-microservice.go-service-obs.svc.cluster.local
+        host: go-microservice
         port:
           number: 8080
     timeout: 10s
@@ -26,7 +26,7 @@ spec:
         exact: /v1/purchase
     route:
     - destination:
-        host: go-microservice.go-service-obs.svc.cluster.local
+        host: go-microservice
         port:
           number: 8080
     timeout: 30s

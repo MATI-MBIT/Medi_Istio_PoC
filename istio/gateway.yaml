@@ -2,7 +2,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: go-service-gateway
-  namespace: go-service-obs
+  namespace: istio-system
 spec:
   selector:
     istio: ingressgateway
@@ -11,14 +11,5 @@ spec:
         number: 80
         name: http
         protocol: HTTP
-      hosts:
-        - "*"
-    - port:
-        number: 443
-        name: https
-        protocol: HTTPS
-      tls:
-        mode: SIMPLE
-        credentialName: go-service-tls
       hosts:
         - "*"

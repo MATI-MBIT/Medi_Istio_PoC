@@ -21,8 +21,9 @@ spec:
       serviceAccountName: go-service-sa
       containers:
         - name: go-microservice
-          image: go-microservice:otel-local
-          imagePullPolicy: Never
+          # image: go-microservice:otel-local
+          image: docker.io/aira18/go-microservice:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
