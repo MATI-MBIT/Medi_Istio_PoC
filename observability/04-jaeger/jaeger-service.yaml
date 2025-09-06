@@ -5,23 +5,25 @@ metadata:
   namespace: go-service-obs
   labels:
     app: jaeger
+    version: v1
 spec:
   selector:
     app: jaeger
+    version: v1
   ports:
-  - name: grpc
+  - name: grpc-jaeger
     port: 14250
     targetPort: 14250
-  - name: http
+  - name: http-jaeger
     port: 14268
     targetPort: 14268
-  - name: otlp-grpc
+  - name: grpc-otlp
     port: 4317
     targetPort: 4317
-  - name: otlp-http
+  - name: http-otlp
     port: 4318
     targetPort: 4318
-  - name: zipkin
+  - name: http-zipkin
     port: 9411
     targetPort: 9411
 ---
@@ -32,10 +34,12 @@ metadata:
   namespace: go-service-obs
   labels:
     app: jaeger
+    version: v1
 spec:
   selector:
     app: jaeger
+    version: v1
   ports:
   - port: 16686
     targetPort: 16686
-    name: ui
+    name: http

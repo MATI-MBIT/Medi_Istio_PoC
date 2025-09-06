@@ -5,16 +5,20 @@ metadata:
   namespace: go-service-obs
   labels:
     app: prometheus
+    version: v1
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: prometheus
+      version: v1
   template:
     metadata:
       labels:
         app: prometheus
+        version: v1
     spec:
+      serviceAccountName: go-service-sa
       containers:
       - name: prometheus
         image: prom/prometheus:v2.47.0

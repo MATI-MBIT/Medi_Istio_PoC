@@ -5,9 +5,11 @@ metadata:
   namespace: go-service-obs
   labels:
     app: loki
+    version: v1
 spec:
   selector:
     app: loki
+    version: v1
   ports:
   - port: 3100
     targetPort: 3100

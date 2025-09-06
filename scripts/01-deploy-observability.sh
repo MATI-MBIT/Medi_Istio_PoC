@@ -6,6 +6,7 @@ echo "🚀 Deploying Complete Observability Stack..."
 # Create namespace
 echo "📦 Creating namespace..."
 kubectl apply -f k8s/00-namespace.yaml
+kubectl apply -f k8s/01-serviceaccount.yaml
 
 # Deploy observability components in order
 echo "🔍 Deploying OpenTelemetry Collector..."

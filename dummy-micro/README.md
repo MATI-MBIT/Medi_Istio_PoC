@@ -29,33 +29,33 @@ The microservice uses environment variables for configuration:
 - Go 1.21+ (optional, only needed for local development without Docker)
 - OpenTelemetry collector running and accessible
 
-### Using Docker (Recommended)
+### Local Development
 
-1. Build the Docker image:
+1. Build and run locally:
    ```bash
-   docker build -t yourusername/go-microservice .
+   go mod tidy
+   go run main.go
    ```
 
-2. Run the container:
+2. Build Docker image locally:
    ```bash
-   docker run -p 8080:8080 yourusername/go-microservice
+   ./build-and-push.sh
    ```
 
-### Pushing to DockerHub
+### Kubernetes Deployment
 
-1. Log in to DockerHub:
+1. Build and deploy to Kubernetes:
    ```bash
-   docker login
+   # From the project root
+   ./scripts/05-build-and-deploy-microservice.sh
    ```
 
-2. Tag your image:
+2. Or manually:
    ```bash
-   docker tag yourusername/go-microservice yourusername/go-microservice:latest
-   ```
-
-3. Push the image:
-   ```bash
-   docker push yourusername/go-microservice:latest
+   cd dummy-micro
+   docker build -t go-microservice:otel-local .
+   cd ../k8s
+   kubectl apply -f 02-deployment.yaml
    ```
 
 ## API Endpoints

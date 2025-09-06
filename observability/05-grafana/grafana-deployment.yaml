@@ -6,81 +6,81 @@ metadata:
 data:
   go-service-dashboard.json: |
     {
-      "dashboard": {
-        "id": null,
-        "uid": "go-microservice-obs",
-        "title": "Go Microservice - Complete Observability",
-        "tags": ["go", "microservice", "observability"],
-        "timezone": "browser",
-        "time": {
-          "from": "now-1h",
-          "to": "now"
-        },
-        "refresh": "30s",
-        "panels": [
-          {
-            "id": 1,
-            "title": "Request Rate (RPS)",
-            "type": "stat",
-            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
-            "targets": [
-              {
-                "expr": "sum(rate(http_requests_total{job=~\".*go-microservice.*\"}[5m]))",
-                "legendFormat": "Requests/sec",
-                "refId": "A"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "palette-classic"},
-                "unit": "reqps",
-                "min": 0
-              }
+      "id": null,
+      "uid": "go-microservice-obs",
+      "title": "Go Microservice - Complete Observability",
+      "tags": ["go", "microservice", "observability"],
+      "timezone": "browser",
+      "schemaVersion": 30,
+      "version": 1,
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "refresh": "30s",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate (RPS)",
+          "type": "stat",
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=~\".*go-microservice.*\"}[5m]))",
+              "legendFormat": "Requests/sec",
+              "refId": "A"
             }
-          },
-          {
-            "id": 2,
-            "title": "Response Time (P95)",
-            "type": "stat",
-            "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
-            "targets": [
-              {
-                "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=~\".*go-microservice.*\"}[5m])) by (le))",
-                "legendFormat": "95th percentile",
-                "refId": "A"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "palette-classic"},
-                "unit": "s",
-                "min": 0
-              }
-            }
-          },
-          {
-            "id": 3,
-            "title": "Error Rate (%)",
-            "type": "stat",
-            "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
-            "targets": [
-              {
-                "expr": "sum(rate(http_requests_total{job=~\".*go-microservice.*\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=~\".*go-microservice.*\"}[5m])) * 100",
-                "legendFormat": "Error %",
-                "refId": "A"
-              }
-            ],
-            "fieldConfig": {
-              "defaults": {
-                "color": {"mode": "palette-classic"},
-                "unit": "percent",
-                "min": 0,
-                "max": 100
-              }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "unit": "reqps",
+              "min": 0
             }
           }
-        ]
-      }
+        },
+        {
+          "id": 2,
+          "title": "Response Time (P95)",
+          "type": "stat",
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=~\".*go-microservice.*\"}[5m])) by (le))",
+              "legendFormat": "95th percentile",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "unit": "s",
+              "min": 0
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Error Rate (%)",
+          "type": "stat",
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=~\".*go-microservice.*\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=~\".*go-microservice.*\"}[5m])) * 100",
+              "legendFormat": "Error %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "unit": "percent",
+              "min": 0,
+              "max": 100
+            }
+          }
+        }
+      ]
     }
 ---
 apiVersion: apps/v1
@@ -90,6 +90,7 @@ metadata:
   namespace: go-service-obs
   labels:
     app: grafana
+    version: v1
 spec:
   replicas: 1
   selector:
@@ -102,7 +103,10 @@ spec:
         app: grafana
         version: v1
         service: grafana
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
       - name: grafana
         image: grafana/grafana:10.1.0
@@ -113,6 +117,14 @@ spec:
           value: "grafana-piechart-panel,grafana-clock-panel"
         - name: GF_FEATURE_TOGGLES_ENABLE
           value: "traceqlEditor"
+        - name: GF_SERVER_HTTP_PORT
+          value: "3000"
+        - name: GF_LOG_LEVEL
+          value: "info"
+        - name: GF_DATABASE_WAL
+          value: "true"
+        - name: GF_DATABASE_CACHE_MODE
+          value: "private"
         ports:
         - containerPort: 3000
           name: web
@@ -123,6 +135,8 @@ spec:
           mountPath: /etc/grafana/provisioning/dashboards
         - name: dashboards
           mountPath: /var/lib/grafana/dashboards
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
         resources:
           requests:
             memory: "256Mi"
@@ -134,12 +148,18 @@ spec:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /api/health
             port: 3000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
       volumes:
       - name: datasources
         configMap:
@@ -150,3 +170,5 @@ spec:
       - name: dashboards
         configMap:
           name: grafana-go-service-dashboard
+      - name: grafana-storage
+        emptyDir: {}

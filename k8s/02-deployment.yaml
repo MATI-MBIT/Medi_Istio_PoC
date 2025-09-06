@@ -17,75 +17,49 @@ spec:
       labels:
         app: go-microservice
         version: v1
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: go-service-sa
       containers:
-      - name: go-microservice
-        image: docker.io/aira18/go-microservice:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-          name: http
-        env:
-        # Application config
-        - name: PORT
-          value: "8080"
-        - name: LOG_LEVEL
-          value: "info"
-        - name: LOG_FORMAT
-          value: "json"
-        # OpenTelemetry configuration
-        - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: "http://otel-collector.go-service-obs.svc.cluster.local:4317"
-        - name: OTEL_EXPORTER_OTLP_INSECURE
-          value: "true"
-        - name: OTEL_SERVICE_NAME
-          value: "go-microservice"
-        - name: OTEL_SERVICE_VERSION
-          value: "v1.0.0"
-        - name: OTEL_RESOURCE_ATTRIBUTES
-          value: "service.name=go-microservice,service.version=v1.0.0,deployment.environment=production"
-        - name: OTEL_PROPAGATORS
-          value: "tracecontext,baggage"
-        - name: OTEL_TRACES_SAMPLER
-          value: "traceidratio"
-        - name: OTEL_TRACES_SAMPLER_ARG
-          value: "0.1"
-        # Prometheus metrics
-        - name: PROMETHEUS_ENABLED
-          value: "true"
-        - name: METRICS_PATH
-          value: "/metrics"
-        livenessProbe:
-          httpGet:
-            path: /v1/ping
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /v1/ping
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
-          runAsNonRoot: true
-          runAsUser: 1000
+        - name: go-microservice
+          image: go-microservice:otel-local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            # OpenTelemetry configuration
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "otel-collector.go-service-obs.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "go-microservice"
+            - name: OTEL_SERVICE_VERSION
+              value: "v1.0.0"
+          livenessProbe:
+            httpGet:
+              path: /v1/ping
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v1/ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 1000

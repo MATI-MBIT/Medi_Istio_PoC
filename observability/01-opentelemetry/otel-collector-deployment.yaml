@@ -5,6 +5,7 @@ metadata:
   namespace: go-service-obs
   labels:
     app: otel-collector
+    version: v1
 spec:
   replicas: 1
   selector:

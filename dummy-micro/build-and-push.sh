@@ -1,13 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "🔨 Building Go microservice with OpenTelemetry instrumentation..."
+echo "🔨 Building Go microservice with OpenTelemetry instrumentation locally..."
 
-# Build the Docker image
-docker build -t aira18/go-microservice:otel-latest .
+# Build the Docker image locally
+docker build -t go-microservice:otel-local .
 
-echo "📤 Pushing to DockerHub..."
-docker push aira18/go-microservice:otel-latest
-
-echo "✅ Build and push completed!"
-echo "📝 Update your Kubernetes deployment to use: aira18/go-microservice:otel-latest"
+echo "✅ Local build completed!"
+echo "📝 Image built as: go-microservice:otel-local"
+echo "🚀 Ready to deploy to Kubernetes with local image"

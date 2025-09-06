@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+echo "🚀 Building and deploying Go microservice with OpenTelemetry..."
+
+# Navigate to microservice directory
+cd "$(dirname "$0")/../dummy-micro"
+
+echo "🔨 Building Docker image locally..."
+docker build -t go-microservice:otel-local .
+
+echo "📦 Deploying to Kubernetes..."
+cd ..
+
 echo "🚀 Deploying Go Microservice..."
 
 # Deploy Kubernetes resources
