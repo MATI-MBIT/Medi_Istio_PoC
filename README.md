@@ -25,19 +25,16 @@ Prueba de concepto completa con Kubernetes, Istio y OpenTelemetry para observabi
 ## Quick Start
 
 ```bash
-# 1. Instalar Istio
-make install-istio
-
-# 2. Desplegar todo
+# 1. Desplegar todo
 make deploy-all
 
-# 3. Verificar deployment
+# 2. Verificar deployment
 make status
 
-# 4. Acceder a las UIs
+# 3. Acceder a las UIs
 make port-forward
 
-# 5. Cleanup
+# 4. Cleanup
 make cleanup
 ```
 
@@ -46,6 +43,7 @@ make cleanup
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **Zipkin**: http://localhost:9411
 - **Prometheus**: http://localhost:9090
+- **Loki**: http://localhost:3100/log_level
 - **Microservicio**: http://localhost:8080
 
 ## Testing
