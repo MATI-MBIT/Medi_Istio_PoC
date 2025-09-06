@@ -1,15 +1,33 @@
-# Go Microservice
+# Go Microservice with OpenTelemetry
 
-A simple Go microservice with two endpoints:
+A Go microservice with full observability instrumentation that sends metrics, traces, and logs to an OpenTelemetry collector.
 
-1. `GET /v1/ping` - Returns "pong"
-2. `POST /v1/purchase` - Returns a dummy purchase JSON response
+## Features
+
+- **Endpoints:**
+  1. `GET /v1/ping` - Returns "pong"
+  2. `POST /v1/purchase` - Returns a dummy purchase JSON response
+
+- **Observability:**
+  - **Metrics**: HTTP request counters and duration histograms sent via OTLP
+  - **Traces**: Distributed tracing with automatic span creation
+  - **Logs**: Structured JSON logs with trace correlation
+
+## Configuration
+
+The microservice uses environment variables for configuration:
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT`: OpenTelemetry collector endpoint (default: `otel-collector.go-service-obs.svc.cluster.local:4317`)
+- `OTEL_SERVICE_NAME`: Service name for telemetry (default: `go-microservice`)
+- `OTEL_SERVICE_VERSION`: Service version (default: `v1.0.0`)
+- `PORT`: HTTP server port (default: `8080`)
 
 ## Building and Running
 
 ### Prerequisites
 - Docker installed on your system
-- Go (optional, only needed for local development without Docker)
+- Go 1.21+ (optional, only needed for local development without Docker)
+- OpenTelemetry collector running and accessible
 
 ### Using Docker (Recommended)
 
