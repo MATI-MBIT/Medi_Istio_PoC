@@ -1,23 +1,91 @@
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: go-microservice-vs
+  name: medi-services-vs
 spec:
   hosts:
-  - "*"
+    - "*"
   gateways:
-  - go-microservice-gateway
+    - medi-services-gateway
   http:
-  - match:
-    - uri:
-        prefix: /v1/
-    route:
-    - destination:
-        host: go-microservice
-        port:
-          number: 8080
-    timeout: 30s
-    retries:
-      attempts: 3
-      perTryTimeout: 10s
-      retryOn: 5xx,reset,connect-failure,refused-stream
+    # Purchase Plan Service routes (with path rewrite)
+    - match:
+        - uri:
+            prefix: /api/purchase-plan/
+      route:
+        - destination:
+            host: purchase-plan-service
+            port:
+              number: 8081
+      rewrite:
+        uri: /
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: 5xx,reset,connect-failure,refused-stream
+    # Purchase Plan Service routes (without rewrite - fallback)
+    - match:
+        - uri:
+            prefix: /purchase-plan/
+      route:
+        - destination:
+            host: purchase-plan-service
+            port:
+              number: 8081
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: 5xx,reset,connect-failure,refused-stream
+    # Product Service routes
+    - match:
+        - uri:
+            prefix: /api/products/
+      route:
+        - destination:
+            host: product-service
+            port:
+              number: 8080
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: 5xx,reset,connect-failure,refused-stream
+    # Health checks for new services
+    - match:
+        - uri:
+            exact: /health/purchase-plan
+      route:
+        - destination:
+            host: purchase-plan-service
+            port:
+              number: 8081
+      rewrite:
+        uri: /health
+      timeout: 10s
+    - match:
+        - uri:
+            exact: /health/products
+      route:
+        - destination:
+            host: product-service
+            port:
+              number: 8080
+      rewrite:
+        uri: /health
+      timeout: 10s
+    # Original go-microservice routes (keep for backward compatibility)
+    - match:
+        - uri:
+            prefix: /v1/
+      route:
+        - destination:
+            host: go-microservice
+            port:
+              number: 8080
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: 5xx,reset,connect-failure,refused-stream

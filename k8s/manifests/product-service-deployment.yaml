@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  ## namespace: medisupply
+  labels:
+    app: product-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: product-service
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: product-service
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+        sidecar.istio.io/rewriteAppHTTPProbers: "false"
+        # Configuración de telemetría para Envoy
+        proxy.istio.io/config: |
+          proxyStatsMatcher:
+            inclusionRegexps:
+            - ".*outlier_detection.*"
+            - ".*circuit_breakers.*"
+            - ".*upstream_rq_retry.*"
+            - ".*upstream_rq_pending.*"
+            - ".*_cx_.*"
+    spec:
+      containers:
+        - name: product-service
+          image: jssierrac1/arqnewgen-medisupply-product-service
+          imagePullPolicy: Always # Pull from registry
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+          # Variables para autoinstrumentación OpenTelemetry
+          - name: OTEL_SERVICE_NAME
+            value: "product-service"
+          - name: OTEL_SERVICE_VERSION
+            value: "v1"
+          - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "http://otel-collector.medi.svc.cluster.local:4318"
+          - name: OTEL_EXPORTER_OTLP_PROTOCOL
+            value: "http/protobuf"
+          - name: OTEL_RESOURCE_ATTRIBUTES
+            value: "service.name=product-service,service.version=v1,service.namespace=medi,deployment.environment=poc"
+          - name: OTEL_TRACES_EXPORTER
+            value: "otlp"
+          - name: OTEL_METRICS_EXPORTER
+            value: "otlp"
+          - name: OTEL_LOGS_EXPORTER
+            value: "otlp"
+          - name: OTEL_PROPAGATORS
+            value: "tracecontext,baggage,b3"
+          # Variables adicionales para mejor observabilidad
+          - name: OTEL_TRACES_SAMPLER
+            value: "always_on"
+          - name: OTEL_METRICS_PERIOD
+            value: "5000"
+          - name: OTEL_LOG_LEVEL
+            value: "info"
+          envFrom:
+            - configMapRef:
+                name: product-service-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+      volumes:
+        - name: data-volume
+          emptyDir: {}
