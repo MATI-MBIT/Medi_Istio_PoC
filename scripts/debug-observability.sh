@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# Script para diagnosticar problemas de trazas en Jaeger
+# Script unificado para diagnosticar problemas de observabilidad (métricas y trazas)
 set -e
 
 NAMESPACE=${1:-medi}
+MODE=${2:-all}  # all, metrics, tracing
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utils.sh"
 
-log_info "🔍 Diagnosticando trazas en Jaeger..."
+log_info "🔍 Diagnosticando observabilidad (modo: $MODE)..."
 
 # 1. Verificar que Jaeger está funcionando
 check_jaeger_status() {
@@ -152,25 +153,74 @@ check_istio_logs() {
     done
 }
 
+# Función para diagnosticar métricas de Prometheus
+debug_metrics() {
+    log_step "Diagnosticando métricas de Prometheus..."
+    
+    kubectl port-forward -n istio-system svc/prometheus 9090:9090 >/dev/null 2>&1 &
+    local prom_pid=$!
+    sleep 5
+    
+    # Verificar métricas disponibles
+    local istio_requests=$(curl -s "http://localhost:9090/api/v1/label/__name__/values" | jq -r '.data[]' | grep -c "istio_requests" || echo "0")
+    log_info "Métricas istio_requests encontradas: $istio_requests"
+    
+    # Probar queries alternativas
+    local queries=(
+        "istio_requests_total"
+        "sum by (destination_service) (rate(istio_requests_total[5m]))"
+        "up{job=~\".*envoy.*\"}"
+    )
+    
+    for query in "${queries[@]}"; do
+        local result=$(curl -s "http://localhost:9090/api/v1/query" --data-urlencode "query=$query" | jq -r '.data.result | length' 2>/dev/null || echo "0")
+        if [ "$result" -gt "0" ]; then
+            log_success "✅ Query funciona: $query ($result resultados)"
+        else
+            log_warning "❌ Query sin resultados: $query"
+        fi
+    done
+    
+    kill $prom_pid 2>/dev/null || true
+}
+
 # Función principal
 main() {
-    log_info "🚀 Iniciando diagnóstico de trazas..."
+    log_info "🚀 Iniciando diagnóstico de observabilidad..."
     
-    check_jaeger_status || exit 1
-    check_telemetry_config
-    check_istio_sidecars
-    check_envoy_stats
-    generate_test_traffic
-    sleep 10  # Esperar que las trazas se procesen
-    check_jaeger_traces
-    check_istio_logs
+    case $MODE in
+        "metrics")
+            debug_metrics
+            ;;
+        "tracing")
+            check_jaeger_status || exit 1
+            check_telemetry_config
+            check_istio_sidecars
+            check_envoy_stats
+            generate_test_traffic
+            sleep 10
+            check_jaeger_traces
+            check_istio_logs
+            ;;
+        "all"|*)
+            debug_metrics
+            echo ""
+            check_jaeger_status || exit 1
+            check_telemetry_config
+            check_istio_sidecars
+            check_envoy_stats
+            generate_test_traffic
+            sleep 10
+            check_jaeger_traces
+            check_istio_logs
+            ;;
+    esac
     
     log_success "🎉 Diagnóstico completado"
-    log_info "💡 Recomendaciones:"
-    log_info "  • Verifica que los pods tengan sidecars de Istio"
-    log_info "  • Asegúrate de que la configuración de telemetría esté aplicada"
-    log_info "  • Genera más tráfico con: make test"
-    log_info "  • Accede a Jaeger: http://localhost:16686"
+    log_info "💡 Uso: $0 [namespace] [metrics|tracing|all]"
+    log_info "💡 Accesos:"
+    log_info "  • Prometheus: http://localhost:9090"
+    log_info "  • Jaeger: http://localhost:16686"
 }
 
 main "$@"

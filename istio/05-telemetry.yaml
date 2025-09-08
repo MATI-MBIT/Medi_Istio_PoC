@@ -3,7 +3,7 @@ kind: Telemetry
 metadata:
   name: tracing-only
 spec:
-  # SOLO configuración de trazas - NO tocar métricas
+  # Configuración básica de trazas (filtros se manejan en EnvoyFilter)
   tracing:
   - randomSamplingPercentage: 100.0
     providers:

@@ -51,7 +51,8 @@ _deploy-stack: _create-namespace
 	@kubectl apply -f istio/02-virtualservice.yaml -n $(NAMESPACE)
 	@kubectl apply -f istio/04-peerauthentication.yaml -n $(NAMESPACE)
 	@kubectl apply -f istio/05-telemetry.yaml -n $(NAMESPACE)
-	@kubectl apply -f istio/06-tracing-config.yaml -n istio-system
+	@kubectl apply -f istio/06-tracing-filter.yaml
+	@kubectl apply -f istio/07-gateway-tracing.yaml
 	@echo "$(YELLOW)⏳ Waiting for pods to be ready...$(NC)"
 	@kubectl wait --for=condition=ready pod -l app=product-service -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
 	@kubectl wait --for=condition=ready pod -l app=purchase-plan-service -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
