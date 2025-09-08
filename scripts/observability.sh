@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Script unificado para diagnosticar problemas de observabilidad (métricas y trazas)
+# Script unificado para observabilidad: setup, debug y test
 set -e
 
 NAMESPACE=${1:-medi}
-MODE=${2:-all}  # all, metrics, tracing
+ACTION=${2:-debug}  # setup, debug, test, cleanup
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utils.sh"
 
-log_info "🔍 Diagnosticando observabilidad (modo: $MODE)..."
+log_info "🔍 Observabilidad - Acción: $ACTION en namespace: $NAMESPACE"
 
 # 1. Verificar que Jaeger está funcionando
 check_jaeger_status() {
@@ -184,43 +184,75 @@ debug_metrics() {
     kill $prom_pid 2>/dev/null || true
 }
 
+# Función para setup completo de tracing
+setup_tracing() {
+    log_step "Configurando tracing completo..."
+    
+    kubectl apply -f istio/05-telemetry.yaml -n $NAMESPACE
+    kubectl apply -f istio/06-tracing-filter.yaml
+    kubectl apply -f istio/07-gateway-tracing.yaml
+    
+    kubectl rollout restart deployment/istio-ingressgateway -n istio-system
+    kubectl rollout restart deployment/product-service -n $NAMESPACE
+    kubectl rollout restart deployment/purchase-plan-service -n $NAMESPACE
+    
+    log_success "Tracing configurado"
+}
+
+# Función para cleanup
+cleanup_observability() {
+    log_step "Limpiando observabilidad..."
+    
+    kubectl delete pod -l app=prometheus -n istio-system --ignore-not-found=true
+    kubectl delete pod -l app=jaeger -n istio-system --ignore-not-found=true
+    kubectl rollout restart deployment/product-service -n $NAMESPACE
+    kubectl rollout restart deployment/purchase-plan-service -n $NAMESPACE
+    
+    log_success "Limpieza completada"
+}
+
+# Función para test rápido
+test_observability() {
+    log_step "Probando observabilidad..."
+    
+    kubectl port-forward -n istio-system svc/istio-ingressgateway 8080:80 >/dev/null 2>&1 &
+    local gateway_pid=$!
+    sleep 3
+    
+    for i in {1..5}; do
+        curl -s "http://localhost:8080/api/products/" >/dev/null &
+        curl -s "http://localhost:8080/api/purchase-plan/" >/dev/null &
+    done
+    wait
+    kill $gateway_pid 2>/dev/null || true
+    
+    sleep 10
+    check_jaeger_traces
+    log_success "Test completado"
+}
+
 # Función principal
 main() {
-    log_info "🚀 Iniciando diagnóstico de observabilidad..."
-    
-    case $MODE in
-        "metrics")
-            debug_metrics
+    case $ACTION in
+        "setup")
+            setup_tracing
             ;;
-        "tracing")
-            check_jaeger_status || exit 1
-            check_telemetry_config
-            check_istio_sidecars
-            check_envoy_stats
-            generate_test_traffic
-            sleep 10
-            check_jaeger_traces
-            check_istio_logs
+        "cleanup")
+            cleanup_observability
             ;;
-        "all"|*)
+        "test")
+            test_observability
+            ;;
+        "debug"|*)
             debug_metrics
-            echo ""
-            check_jaeger_status || exit 1
-            check_telemetry_config
-            check_istio_sidecars
-            check_envoy_stats
-            generate_test_traffic
-            sleep 10
+            check_jaeger_status
             check_jaeger_traces
-            check_istio_logs
             ;;
     esac
     
-    log_success "🎉 Diagnóstico completado"
-    log_info "💡 Uso: $0 [namespace] [metrics|tracing|all]"
-    log_info "💡 Accesos:"
-    log_info "  • Prometheus: http://localhost:9090"
-    log_info "  • Jaeger: http://localhost:16686"
+    log_success "🎉 Acción '$ACTION' completada"
+    log_info "💡 Uso: $0 [namespace] [setup|debug|test|cleanup]"
+    log_info "💡 Accesos: Prometheus :9090, Jaeger :16686"
 }
 
 main "$@"
