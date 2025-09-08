@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: warehouse-service
-  namespace: medisupply
+  ## namespace: medisupply
   labels:
     app: warehouse-service
     version: v1

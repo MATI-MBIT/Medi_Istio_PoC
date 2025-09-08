@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: purchase-order-service
-  namespace: medisupply
+  ## namespace: medisupply
   labels:
     app: purchase-order-service
     version: v1

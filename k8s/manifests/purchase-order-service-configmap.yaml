@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: purchase-order-service-config
-  namespace: medisupply
+  ## namespace: medisupply
   labels:
     app: purchase-order-service
     version: v1
