@@ -1,57 +1,75 @@
 #!/bin/bash
 
-# Script optimizado para configurar telemetría en Istio
+# Script para configurar telemetría de Istio con addons nativos
 set -e
 
 NAMESPACE=${1:-medi}
-TIMEOUT=60s
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/utils.sh"
 
-echo "🔧 Configurando telemetría de Istio para namespace: $NAMESPACE"
+log_info "🔧 Configurando telemetría de Istio para namespace: $NAMESPACE"
 
 # Función para verificar prerequisitos
 check_prerequisites() {
     if ! kubectl get namespace istio-system > /dev/null 2>&1; then
-        echo "❌ Istio no está instalado"
+        log_error "Istio no está instalado"
         exit 1
     fi
     
     if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
-        echo "❌ Namespace $NAMESPACE no existe"
+        log_error "Namespace $NAMESPACE no existe"
         exit 1
     fi
+    
+    log_success "Prerequisites verificados"
 }
 
-# Función para esperar servicios
-wait_for_services() {
-    echo "⏳ Esperando servicios de telemetría..."
+# Función para verificar addons de Istio
+check_istio_addons() {
+    log_info "Verificando addons de Istio..."
     
-    local services=("otel-collector" "zipkin")
-    for service in "${services[@]}"; do
-        if kubectl get deployment/$service -n $NAMESPACE > /dev/null 2>&1; then
-            kubectl wait --for=condition=available deployment/$service -n $NAMESPACE --timeout=$TIMEOUT || \
-                echo "⚠️ $service no está completamente listo, continuando..."
+    local addons=("prometheus" "grafana" "jaeger" "kiali")
+    local missing=()
+    
+    for addon in "${addons[@]}"; do
+        if kubectl get pod -l app=$addon -n istio-system >/dev/null 2>&1; then
+            log_success "$addon está disponible"
+        else
+            missing+=($addon)
         fi
     done
+    
+    if [ ${#missing[@]} -ne 0 ]; then
+        log_warning "Addons faltantes: ${missing[*]}"
+        log_info "Instala con: istioctl install --set values.pilot.env.EXTERNAL_ISTIOD=false"
+    fi
 }
 
-# Función para reiniciar aplicación
-restart_application() {
-    echo "🔄 Aplicando configuración de telemetría..."
-    if kubectl get deployment/go-microservice -n $NAMESPACE > /dev/null 2>&1; then
-        kubectl rollout restart deployment/go-microservice -n $NAMESPACE
-        kubectl rollout status deployment/go-microservice -n $NAMESPACE --timeout=300s
-    fi
+# Función para verificar microservicios
+check_microservices() {
+    log_info "Verificando microservicios..."
+    
+    local services=("product-service" "purchase-plan-service")
+    
+    for service in "${services[@]}"; do
+        if kubectl get deployment/$service -n $NAMESPACE >/dev/null 2>&1; then
+            local ready=$(kubectl get deployment/$service -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+            local desired=$(kubectl get deployment/$service -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+            log_info "$service: $ready/$desired pods listos"
+        else
+            log_warning "$service no encontrado"
+        fi
+    done
 }
 
 # Función principal
 main() {
     check_prerequisites
-    wait_for_services
-    restart_application
+    check_istio_addons
+    check_microservices
     
-    echo "✅ Configuración de telemetría aplicada"
-    echo "📊 Estado actual:"
-    kubectl get pods -n $NAMESPACE --no-headers | grep -E "(Running|Ready)" | wc -l | xargs echo "Pods listos:"
+    log_success "Configuración de telemetría verificada"
+    log_info "💡 Usa 'make port-forward' para acceder a las UIs"
 }
 
 main "$@"

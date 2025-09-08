@@ -10,3 +10,4 @@ data:
   APP_ENV: "prod"
   HTTP_PORT: ":8081"
   PRODUCT_SERVICE_URL: "http://product-service:8080"
+  SUPPLIER_SERVICE_URL: "http://supplier-service:8082"

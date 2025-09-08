@@ -1,43 +1,10 @@
 apiVersion: telemetry.istio.io/v1alpha1
 kind: Telemetry
 metadata:
-  name: default
+  name: tracing-only
 spec:
-  # Configuración de trazas
+  # SOLO configuración de trazas - NO tocar métricas
   tracing:
   - randomSamplingPercentage: 100.0
     providers:
-    - name: zipkin
-  
-  # Configuración de métricas personalizadas
-  metrics:
-  - providers:
-    - name: prometheus
-  - overrides:
-    - match:
-        metric: ALL_METRICS
-      tagOverrides:
-        destination_service_name:
-          value: "%{DESTINATION_SERVICE_NAME | 'unknown'}"
-        source_app:
-          value: "%{SOURCE_APP | 'unknown'}"
-        destination_app:
-          value: "%{DESTINATION_APP | 'unknown'}"
-  
-  # Configuración de logs de acceso
-  accessLogging:
-  - providers:
-    - name: otel
----
-apiVersion: telemetry.istio.io/v1alpha1
-kind: Telemetry
-metadata:
-  name: otel-demo
-spec:
-  # Configuración específica para enviar métricas al collector
-  metrics:
-  - providers:
-    - name: otel-collector
-  tracing:
-  - providers:
-    - name: otel-collector
+    - name: jaeger

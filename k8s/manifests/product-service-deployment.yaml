@@ -39,32 +39,15 @@ spec:
               name: http
               protocol: TCP
           env:
-          # Variables para autoinstrumentación OpenTelemetry
-          - name: OTEL_SERVICE_NAME
+          # Basic service configuration
+          - name: SERVICE_NAME
             value: "product-service"
-          - name: OTEL_SERVICE_VERSION
+          - name: SERVICE_VERSION
             value: "v1"
-          - name: OTEL_EXPORTER_OTLP_ENDPOINT
-            value: "http://otel-collector.medi.svc.cluster.local:4318"
-          - name: OTEL_EXPORTER_OTLP_PROTOCOL
-            value: "http/protobuf"
-          - name: OTEL_RESOURCE_ATTRIBUTES
-            value: "service.name=product-service,service.version=v1,service.namespace=medi,deployment.environment=poc"
-          - name: OTEL_TRACES_EXPORTER
-            value: "otlp"
-          - name: OTEL_METRICS_EXPORTER
-            value: "otlp"
-          - name: OTEL_LOGS_EXPORTER
-            value: "otlp"
-          - name: OTEL_PROPAGATORS
-            value: "tracecontext,baggage,b3"
-          # Variables adicionales para mejor observabilidad
-          - name: OTEL_TRACES_SAMPLER
-            value: "always_on"
-          - name: OTEL_METRICS_PERIOD
-            value: "5000"
-          - name: OTEL_LOG_LEVEL
-            value: "info"
+          - name: SERVICE_NAMESPACE
+            value: "medi"
+          - name: ENVIRONMENT
+            value: "poc"
           envFrom:
             - configMapRef:
                 name: product-service-config

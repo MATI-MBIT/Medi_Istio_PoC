@@ -33,12 +33,12 @@ make test
 
 | Componente | Descripción |
 |------------|-------------|
-| **Microservicio** | `docker.io/aira18/go-microservice:latest` |
+| **Microservicios** | Product Service, Purchase Plan Service |
 | **Service Mesh** | Istio con mTLS permissive |
 | **Telemetría** | OpenTelemetry Collector |
 | **Métricas** | Prometheus |
 | **Logs** | Loki |
-| **Trazas** | Zipkin |
+| **Trazas** | Jaeger |
 | **Dashboards** | Grafana |
 | **Namespace** | `medi` |
 
@@ -52,7 +52,7 @@ make test
 | Servicio | URL | Credenciales |
 |----------|-----|--------------|
 | **Grafana** | http://localhost:3000 | admin/admin |
-| **Zipkin** | http://localhost:9411 | - |
+| **Jaeger** | http://localhost:16686 | - |
 | **Prometheus** | http://localhost:9090 | - |
 | **Loki** | http://localhost:3100 | - |
 | **Microservicio** | http://localhost:8080 | - |

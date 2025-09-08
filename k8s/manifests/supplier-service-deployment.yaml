@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: purchase-plan-service
+  name: supplier-service
   ## namespace: medisupply
   labels:
-    app: purchase-plan-service
+    app: supplier-service
     version: v1
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: purchase-plan-service
+      app: supplier-service
       version: v1
   template:
     metadata:
       labels:
-        app: purchase-plan-service
+        app: supplier-service
         version: v1
       annotations:
         sidecar.istio.io/inject: "true"
@@ -31,30 +31,20 @@ spec:
             - ".*_cx_.*"
     spec:
       containers:
-      - name: purchase-plan-service
-        image: jssierrac1/arqnewgen-medisupply-purchase-plan-service:beta
-        imagePullPolicy: Always  # Pull from registry
+      - name: supplier-service
+        image: jssierrac1/arqnewgen-medisupply-supplier-service
+        imagePullPolicy: Always
         ports:
-        - containerPort: 8081
+        - containerPort: 8082
           name: http
           protocol: TCP
-        env:
-        # Basic service configuration
-        - name: SERVICE_NAME
-          value: "purchase-plan-service"
-        - name: SERVICE_VERSION
-          value: "v1"
-        - name: SERVICE_NAMESPACE
-          value: "medi"
-        - name: ENVIRONMENT
-          value: "poc"
         envFrom:
         - configMapRef:
-            name: purchase-plan-service-config
+            name: supplier-service-config
         livenessProbe:
           httpGet:
             path: /health
-            port: 8081
+            port: 8082
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
@@ -62,7 +52,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /health
-            port: 8081
+            port: 8082
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3

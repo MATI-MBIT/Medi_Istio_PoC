@@ -22,18 +22,11 @@ check: ## Check prerequisites and cluster status
 	@./scripts/pre-deploy-check.sh
 
 # === INSTALLATION ===
-install: check ## Install Istio with optimized configuration
+install: check ## Install Istio with native addons configuration
 	@echo "$(YELLOW)📦 Installing Istio $(ISTIO_VERSION)...$(NC)"
 	@istioctl install --set values.defaultRevision=default \
-		--set meshConfig.defaultConfig.tracing.zipkin.address=zipkin.$(NAMESPACE).svc.cluster.local:9411 \
-		--set meshConfig.defaultConfig.tracing.sampling=100.0 \
-		--set values.pilot.traceSampling=100.0 \
-		--set meshConfig.extensionProviders[0].name=otel-collector \
-		--set meshConfig.extensionProviders[0].envoyOtelAls.service=otel-collector.$(NAMESPACE).svc.cluster.local \
-		--set meshConfig.extensionProviders[0].envoyOtelAls.port=4317 \
-		--set meshConfig.extensionProviders[1].name=zipkin \
-		--set meshConfig.extensionProviders[1].zipkin.service=zipkin.$(NAMESPACE).svc.cluster.local \
-		--set meshConfig.extensionProviders[1].zipkin.port=9411 -y
+		--set meshConfig.defaultConfig.tracing.sampling=10.0 \
+		--set values.pilot.traceSampling=10.0 -y
 	@kubectl label namespace default istio-injection=enabled --overwrite
 	@echo "$(GREEN)✅ Istio installed successfully$(NC)"
 
@@ -52,18 +45,21 @@ _create-namespace:
 
 _deploy-stack: _create-namespace
 	@echo "$(YELLOW)🚀 Deploying application stack...$(NC)"
-	@kubectl apply -f monitoring/ -n $(NAMESPACE)
-	@kubectl apply -f otel/ -n $(NAMESPACE)
 	@kubectl apply -f k8s/ -n $(NAMESPACE)
 	@kubectl apply -f k8s/manifests/ -n $(NAMESPACE)
-	@kubectl apply -f istio/ -n $(NAMESPACE)
+	@kubectl apply -f istio/01-gateway.yaml -n $(NAMESPACE)
+	@kubectl apply -f istio/02-virtualservice.yaml -n $(NAMESPACE)
+	@kubectl apply -f istio/04-peerauthentication.yaml -n $(NAMESPACE)
+	@kubectl apply -f istio/05-telemetry.yaml -n $(NAMESPACE)
+	@kubectl apply -f istio/06-tracing-config.yaml -n istio-system
 	@echo "$(YELLOW)⏳ Waiting for pods to be ready...$(NC)"
-	@kubectl wait --for=condition=ready pod -l app=prometheus -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
-	@kubectl wait --for=condition=ready pod -l app=grafana -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
-	@kubectl wait --for=condition=ready pod -l app=otel-collector -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
-	@kubectl wait --for=condition=ready pod -l app=go-microservice -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
 	@kubectl wait --for=condition=ready pod -l app=product-service -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
 	@kubectl wait --for=condition=ready pod -l app=purchase-plan-service -n $(NAMESPACE) --timeout=$(TIMEOUT) || true
+	@echo "$(YELLOW)⏳ Verificando addons de Istio...$(NC)"
+	@kubectl wait --for=condition=ready pod -l app=prometheus -n istio-system --timeout=$(TIMEOUT) || true
+	@kubectl wait --for=condition=ready pod -l app=grafana -n istio-system --timeout=$(TIMEOUT) || true
+	@kubectl wait --for=condition=ready pod -l app=jaeger -n istio-system --timeout=$(TIMEOUT) || true
+	@kubectl wait --for=condition=ready pod -l app=kiali -n istio-system --timeout=$(TIMEOUT) || true
 
 _configure-telemetry:
 	@echo "$(YELLOW)🔧 Configuring telemetry...$(NC)"
@@ -85,10 +81,11 @@ status: ## Show deployment status
 
 port-forward: ## Start port forwarding for all UIs
 	@echo "$(GREEN)🌐 Starting port forwarding...$(NC)"
-	@echo "$(BLUE)Available UIs:$(NC)"
-	@echo "  • Grafana:     http://localhost:3000"
-	@echo "  • Zipkin:      http://localhost:9411"
+	@echo "$(BLUE)Available UIs (Istio Addons):$(NC)"
+	@echo "  • Grafana:     http://localhost:3000 (admin/admin)"
+	@echo "  • Jaeger:      http://localhost:16686"
 	@echo "  • Prometheus:  http://localhost:9090"
+	@echo "  • Kiali:       http://localhost:20001"
 	@echo "  • Loki:        http://localhost:3100"
 	@echo ""
 	@echo "$(BLUE)Available Services (via Ingress Gateway):$(NC)"
@@ -100,11 +97,30 @@ port-forward: ## Start port forwarding for all UIs
 	@echo "    - Purchase Plan:     http://localhost:8080/health/purchase-plan"
 	@echo ""
 	@echo "$(YELLOW)Press Ctrl+C to stop all port forwards$(NC)"
-	@kubectl port-forward -n $(NAMESPACE) svc/grafana 3000:3000 & \
-	kubectl port-forward -n $(NAMESPACE) svc/zipkin 9411:9411 & \
-	kubectl port-forward -n $(NAMESPACE) svc/prometheus 9090:9090 & \
-	kubectl port-forward -n $(NAMESPACE) svc/loki 3100:3100 & \
+	@echo ""
+	@echo "$(GREEN)🚀 Starting port forwards...$(NC)"
+	@kubectl port-forward -n istio-system svc/grafana 3000:3000 & \
+	kubectl port-forward -n istio-system svc/prometheus 9090:9090 & \
+	kubectl port-forward -n istio-system svc/loki 3100:3100 & \
 	kubectl port-forward -n istio-system svc/istio-ingressgateway 8080:80 & \
+	@echo ""
+	@echo "$(GREEN)✅ All services are now accessible:$(NC)"
+	@echo ""
+	@echo "$(BLUE)📊 Observability UIs:$(NC)"
+	@echo "  🔍 Grafana:    http://localhost:3000 (admin/admin)"
+	@echo "  🔍 Jaeger:     http://localhost:16686/jaeger/search"
+	@echo "  🔍 Prometheus: http://localhost:9090"
+	@echo "  🔍 Kiali:      http://localhost:20001"
+	@echo "  🔍 Loki:       http://localhost:3100"
+	@echo ""
+	@echo "$(BLUE)🚀 Application Services:$(NC)"
+	@echo "  � Product sService:  http://localhost:8080/api/products/"
+	@echo "  � Purchcase Plan:    http://localhost:8080/api/purchase-plan/"
+	@echo ""
+	@echo "$(BLUE)🏥 Health Checks:$(NC)"
+	@echo "  ✅ Products:         http://localhost:8080/health/products"
+	@echo "  ✅ Purchase Plan:    http://localhost:8080/health/purchase-plan"
+	@echo ""
 	wait
 
 # === TESTING ===
@@ -114,12 +130,6 @@ test: ## Run comprehensive tests
 
 test-quick: ## Run quick endpoint tests
 	@echo "$(YELLOW)⚡ Quick endpoint tests via Ingress Gateway...$(NC)"
-	@echo "Testing go-microservice ping:"
-	@curl -sf http://localhost:8080/v1/ping && echo "$(GREEN)✅ Go-microservice Ping OK$(NC)" || echo "$(RED)❌ Go-microservice Ping failed$(NC)"
-	@echo "Testing go-microservice purchase:"
-	@curl -sf -X POST http://localhost:8080/v1/purchase \
-		-H "Content-Type: application/json" \
-		-d '{"item":"test","amount":99.99}' && echo "$(GREEN)✅ Go-microservice Purchase OK$(NC)" || echo "$(RED)❌ Go-microservice Purchase failed$(NC)"
 	@echo "Testing product-service health via gateway:"
 	@curl -sf http://localhost:8080/health/products && echo "$(GREEN)✅ Product Service Health OK$(NC)" || echo "$(RED)❌ Product Service Health failed$(NC)"
 	@echo "Testing purchase-plan-service health via gateway:"
@@ -149,16 +159,13 @@ stop-port-forwards: ## Stop all kubectl port-forward processes
 # === UTILITIES ===
 logs: ## Show logs from all pods
 	@echo "$(BLUE)=== Recent logs from all pods ===$(NC)"
-	@kubectl logs -n $(NAMESPACE) -l app=go-microservice --tail=20 --prefix=true || true
 	@kubectl logs -n $(NAMESPACE) -l app=product-service --tail=20 --prefix=true || true
 	@kubectl logs -n $(NAMESPACE) -l app=purchase-plan-service --tail=20 --prefix=true || true
 	@kubectl logs -n $(NAMESPACE) -l app=otel-collector --tail=10 --prefix=true || true
 
 restart: ## Restart application pods
 	@echo "$(YELLOW)🔄 Restarting application pods...$(NC)"
-	@kubectl rollout restart deployment/go-microservice -n $(NAMESPACE)
 	@kubectl rollout restart deployment/product-service -n $(NAMESPACE)
 	@kubectl rollout restart deployment/purchase-plan-service -n $(NAMESPACE)
-	@kubectl rollout status deployment/go-microservice -n $(NAMESPACE) --timeout=$(TIMEOUT)
 	@kubectl rollout status deployment/product-service -n $(NAMESPACE) --timeout=$(TIMEOUT)
 	@kubectl rollout status deployment/purchase-plan-service -n $(NAMESPACE) --timeout=$(TIMEOUT)

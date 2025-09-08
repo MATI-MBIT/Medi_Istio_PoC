@@ -47,6 +47,24 @@ spec:
             host: product-service
             port:
               number: 8080
+      rewrite:
+        uri: /
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: 5xx,reset,connect-failure,refused-stream
+    # Suppliers Service routes (with path rewrite)
+    - match:
+        - uri:
+            prefix: /api/suppliers/
+      route:
+        - destination:
+            host: supplier-service
+            port:
+              number: 8082
+      rewrite:
+        uri: /
       timeout: 30s
       retries:
         attempts: 3
@@ -75,17 +93,15 @@ spec:
       rewrite:
         uri: /health
       timeout: 10s
-    # Original go-microservice routes (keep for backward compatibility)
     - match:
         - uri:
-            prefix: /v1/
+            exact: /health/suppliers
       route:
         - destination:
-            host: go-microservice
+            host: supplier-service
             port:
-              number: 8080
-      timeout: 30s
-      retries:
-        attempts: 3
-        perTryTimeout: 10s
-        retryOn: 5xx,reset,connect-failure,refused-stream
+              number: 8082
+      rewrite:
+        uri: /health
+      timeout: 10s
+
