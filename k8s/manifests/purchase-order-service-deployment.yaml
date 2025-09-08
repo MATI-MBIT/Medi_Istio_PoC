@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: purchase-order-service
+  namespace: medisupply
+  labels:
+    app: purchase-order-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: purchase-order-service
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: purchase-order-service
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+    spec:
+      containers:
+      - name: purchase-order-service
+        image: jssierrac1/arqnewgen-medisupply-purchase-order-service
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8200
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: purchase-order-service-config
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8200
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8200
+          initialDelaySeconds: 5
+          periodSeconds: 60
+          timeoutSeconds: 10
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+      volumes:
+      - name: data-volume
+        emptyDir: {}
